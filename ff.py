@@ -1,6 +1,7 @@
 import requests
 import socket
 import time
+import datetime
 
 hg_key = 'fofofof'
 drop_list = ['code', 'id', 'team_code', 'squad_number',
@@ -44,11 +45,21 @@ def get_team_mappings(teams):
     return team_map
 
 
+def alive():
+    to_send = "%s.ff.script_alive 1\n"
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.sendto(to_send, ("carbon.hostedgraphite.com", 2003))
+        return True
+    except:
+        return False
+
+
 def send_to_hosted_graphite(p):
     send_count = 0
     metric_prefix = "%s.%s" % (hg_key, 'fantasy_football')
     for metric in p:
-        to_send = "%s.%s \n" % (metric_prefix, metric)
+        to_send = "%s.%s\n" % (metric_prefix, metric)
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             sock.sendto(to_send, ("carbon.hostedgraphite.com", 2003))
@@ -60,7 +71,18 @@ def send_to_hosted_graphite(p):
 
 
 def main():
-    res = get_all_data().json()
-    teams = get_team_mappings(res['teams'])
-    p = parse_players(res['elements'], teams)
-    send_to_hosted_graphite(p)
+    updated = False
+    last_run = time.time() - 432000
+    while True:
+        d = datetime.datetime.now()
+        if d.isoweekday() is 5 and (time.time() - last_run) > 432000:
+            run = True
+        if run:
+            last_run = time.time()
+            res = get_all_data().json()
+            teams = get_team_mappings(res['teams'])
+            p = parse_players(res['elements'], teams)
+            send_to_hosted_graphite(p)
+        if (time.time() - last_measure) > 3600 and updated:
+            updated = alive()
+
