@@ -3,7 +3,8 @@ import socket
 import time
 
 hg_key = 'fofofof'
-drop_list = ['code', 'id', 'team_code', 'squad_number', 'team', 'ep_next', 'element_type', 'bps']
+drop_list = ['code', 'id', 'team_code', 'squad_number',
+             'team', 'ep_next', 'element_type', 'bps']
 
 
 def get_all_data():
@@ -13,8 +14,7 @@ def get_all_data():
 
 
 def parse_players(players, team_map):
-    all_players = {}
-    m_list = []   
+    m_list = []
     for player in players:
         team = team_map[player['team']]
         name = "%s_%s" % (player['first_name'], player['second_name'])
@@ -49,13 +49,14 @@ def send_to_hosted_graphite(p):
     metric_prefix = "%s.%s" % (hg_key, 'fantasy_football')
     for metric in p:
         to_send = "%s.%s \n" % (metric_prefix, metric)
-        print to_send
-        send_count += 1
-    print "Send %s" % send_count
-
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.sendto(to_send, ("carbon.hostedgraphite.com", 2003))
-
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.sendto(to_send, ("carbon.hostedgraphite.com", 2003))
+            send_count += 1
+        except:
+            pass
+        time.sleep(1)
+    print "Sent %s" % send_count
 
 
 def main():
@@ -63,6 +64,3 @@ def main():
     teams = get_team_mappings(res['teams'])
     p = parse_players(res['elements'], teams)
     send_to_hosted_graphite(p)
-
-
-
