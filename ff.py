@@ -40,7 +40,6 @@ def get_team_mappings(teams):
     team_map = {}
     for team in teams:
         n = team['name'].replace(' ', '_')
-        print n
         team_map[team['id']] = n
     return team_map
 
@@ -72,17 +71,23 @@ def send_to_hosted_graphite(p):
 
 def main():
     updated = False
+    run = True
     last_run = time.time() - 432000
     while True:
         d = datetime.datetime.now()
         if d.isoweekday() is 5 and (time.time() - last_run) > 432000:
             run = True
         if run:
+            print "running"
             last_run = time.time()
             res = get_all_data().json()
             teams = get_team_mappings(res['teams'])
             p = parse_players(res['elements'], teams)
             send_to_hosted_graphite(p)
+            run = False
         if (time.time() - last_measure) > 3600 and updated:
             updated = alive()
 
+
+if __name__ == '__main__':
+    main() 
